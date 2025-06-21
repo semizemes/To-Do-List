@@ -10,7 +10,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
 const db = new pg.Client({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: `postgresql://${process.env.PGUSER}:${process.env.PGPASSWORD}@centerbeam.proxy.rlwy.net:43664/${process.env.PGDATABASE}`,
   ssl: {
     rejectUnauthorized: false
   }
@@ -19,6 +19,13 @@ const db = new pg.Client({
 // Database connection bilan error handling
 async function connectDB() {
   try {
+    // Debug uchun connection ma'lumotlarini ko'rsatish
+    console.log('Connecting to database...');
+    console.log('Host:', process.env.RAILWAY_TCP_PROXY_DOMAIN);
+    console.log('Port:', process.env.RAILWAY_TCP_PROXY_PORT);
+    console.log('Database:', process.env.PGDATABASE);
+    console.log('User:', process.env.PGUSER);
+
     await db.connect();
     console.log('PostgreSQL database connected successfully!');
   } catch (err) {
