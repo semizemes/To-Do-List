@@ -9,8 +9,13 @@ const port = process.env.PORT || 3001;
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+// Railway variables to'g'ri nomlarini ishlatish
 const db = new pg.Client({
-  connectionString: `postgresql://${process.env.PGUSER}:${process.env.PGPASSWORD}@centerbeam.proxy.rlwy.net:43664/${process.env.PGDATABASE}`,
+  user: process.env.POSTGRES_USER,           // PGUSER o'rniga
+  password: process.env.POSTGRES_PASSWORD,   // PGPASSWORD o'rniga
+  host: 'centerbeam.proxy.rlwy.net',
+  database: process.env.POSTGRES_DB,         // PGDATABASE o'rniga
+  port: 43664,
   ssl: {
     rejectUnauthorized: false
   }
@@ -20,11 +25,13 @@ const db = new pg.Client({
 async function connectDB() {
   try {
     // Debug uchun connection ma'lumotlarini ko'rsatish
-    console.log('Connecting to database...');
-    console.log('Host:', process.env.RAILWAY_TCP_PROXY_DOMAIN);
-    console.log('Port:', process.env.RAILWAY_TCP_PROXY_PORT);
-    console.log('Database:', process.env.PGDATABASE);
-    console.log('User:', process.env.PGUSER);
+    console.log('=== Connection Debug ===');
+    console.log('User:', process.env.POSTGRES_USER);
+    console.log('Password:', process.env.POSTGRES_PASSWORD ? '***' : 'NOT SET');
+    console.log('Database:', process.env.POSTGRES_DB);
+    console.log('Host: centerbeam.proxy.rlwy.net');
+    console.log('Port: 43664');
+    console.log('=== End Debug ===');
 
     await db.connect();
     console.log('PostgreSQL database connected successfully!');
