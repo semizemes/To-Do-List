@@ -1,128 +1,70 @@
 import 'dotenv/config';
 import express from "express";
 import bodyParser from "body-parser";
-import pg from "pg";
+import pg, {Client} from "pg";
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = 3001;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-// Railway variables to'g'ri nomlarini ishlatish
 const db = new pg.Client({
-  user: process.env.POSTGRES_USER,           // PGUSER o'rniga
-  password: process.env.POSTGRES_PASSWORD,   // PGPASSWORD o'rniga
-  host: 'centerbeam.proxy.rlwy.net',
-  database: process.env.POSTGRES_DB,         // PGDATABASE o'rniga
-  port: 43664,
+  user: process.env.PG_USER,
+  password: process.env.PG_PASSWORD,
+  host: process.env.PG_HOST,
+  database: process.env.PG_DATABASE,
+  port: process.env.PG_PORT,
   ssl: {
     rejectUnauthorized: false
   }
 });
 
-// Database connection bilan error handling
-async function connectDB() {
-  try {
-    // Debug uchun connection ma'lumotlarini ko'rsatish
-    console.log('=== Connection Debug ===');
-    console.log('User:', process.env.POSTGRES_USER);
-    console.log('Password:', process.env.POSTGRES_PASSWORD ? '***' : 'NOT SET');
-    console.log('Database:', process.env.POSTGRES_DB);
-    console.log('Host: centerbeam.proxy.rlwy.net');
-    console.log('Port: 43664');
-    console.log('=== End Debug ===');
+db.connect();
 
-    await db.connect();
-    console.log('PostgreSQL database connected successfully!');
-  } catch (err) {
-    console.error('Database connection error:', err);
-    process.exit(1);
-  }
-}
+// let items = [
+//   { id: 1, title: "Buy milk" },
+//   { id: 2, title: "Finish homework" },
+// ];
 
-connectDB();
-
-async function itemsArr() {
-  try {
-    const result = await db.query(`SELECT * FROM items ORDER BY id ASC`);
-    return result.rows;
-  } catch (err) {
-    console.error('Error fetching items:', err);
-    return [];
-  }
-}
+async function itemsArr () {
+  const result = await db.query(`select * from items ORDER BY id ASC`);
+  let items = [];
+  result.rows.forEach((item) => {
+    items.push(item);
+  });
+  return items;
+};
 
 app.get("/", async (req, res) => {
-  try {
-    const items = await itemsArr();
-    console.log(items);
+  const items = await itemsArr();
+  console.log(items);
 
-    res.render("index.ejs", {
-      listTitle: "Today",
-      listItems: items,
-    });
-  } catch (err) {
-    console.error('Error rendering page:', err);
-    res.status(500).send('Server error');
-  }
+  res.render("index.ejs", {
+    listTitle: "Today",
+    listItems: items,
+  });
 });
 
-app.post("/add", async (req, res) => {
+app.post("/add", (req, res) => {
   const item = req.body.newItem;
-
-  if (!item || item.trim() === '') {
-    return res.redirect("/");
-  }
-
-  try {
-    // SQL injection'dan himoya qilish uchun parameterized query
-    await db.query('INSERT INTO items (title) VALUES ($1)', [item.trim()]);
-    res.redirect("/");
-  } catch (err) {
-    console.error('Error adding item:', err);
-    res.status(500).send('Error adding item');
-  }
+  db.query(`insert into items (title) values ('${item}')`)
+  res.redirect("/");
 });
 
-app.post("/edit", async (req, res) => {
+app.post("/edit", (req, res) => {
   console.log(req.body);
-  const itemID = req.body.updatedItemId;
-  const itemTitle = req.body.updatedItemTitle;
-
-  if (!itemTitle || itemTitle.trim() === '') {
-    return res.redirect("/");
-  }
-
-  try {
-    // SQL injection'dan himoya qilish uchun parameterized query
-    await db.query('UPDATE items SET title = $1 WHERE id = $2', [itemTitle.trim(), itemID]);
-    res.redirect('/');
-  } catch (err) {
-    console.error('Error updating item:', err);
-    res.status(500).send('Error updating item');
-  }
+  let itemID = req.body.updatedItemId;
+  let itemTitle = req.body.updatedItemTitle;
+  db.query(`UPDATE items SET title = '${itemTitle}' WHERE id = ${itemID}`);
+  res.redirect('/');
 });
 
-app.post("/delete", async (req, res) => {
+app.post("/delete", (req, res) => {
   console.log(req.body);
-  const deletedID = req.body.deleteItemId;
-
-  try {
-    // SQL injection'dan himoya qilish uchun parameterized query
-    await db.query('DELETE FROM items WHERE id = $1', [deletedID]);
-    res.redirect('/');
-  } catch (err) {
-    console.error('Error deleting item:', err);
-    res.status(500).send('Error deleting item');
-  }
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
-  await db.end();
-  process.exit(0);
+  let deletedID = req.body.deleteItemId;
+  db.query(`delete from items where id=${deletedID}`);
+  res.redirect('/');
 });
 
 app.listen(port, () => {
